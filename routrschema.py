@@ -30,6 +30,9 @@ class RequestParams(object):
     def params(self, request):
         raise NotImplementedError()
 
+    def update_trace(self, trace, result):
+        trace.kwargs.update(result)
+
     def __call__(self, request, trace):
         params = self.params(request)
         try:
@@ -37,7 +40,8 @@ class RequestParams(object):
         except ValidationError as e:
             raise HTTPBadRequest(e.error)
         else:
-            trace.kwargs.update(result)
+            self.update_trace(trace, result)
+        return trace
 
 class qs(RequestParams):
     """ Guard for GET parameters"""
@@ -60,3 +64,6 @@ class json_body(RequestParams):
         if not self.is_application_json(request.content_type):
             raise HTTPBadRequest("only 'application/json' requests are allowed")
         return json.loads(request.body)
+
+    def update_trace(self, trace, result):
+        trace.args = trace.args + (result,)
